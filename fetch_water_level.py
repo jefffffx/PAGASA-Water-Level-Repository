@@ -3,6 +3,8 @@ import requests
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 URL = "https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/water/table_list.do"
 OUT = Path("data/water_level.csv")
@@ -25,6 +27,7 @@ def main():
         URL,
         data={"ymdhm": ymdhm},
         timeout=30,
+        verify=False,
         headers={"User-Agent": "QCDRRMO-EOC-logger"},
     )
     r.raise_for_status()
