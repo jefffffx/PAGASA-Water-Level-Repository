@@ -20,7 +20,7 @@ def parse(v):
 
 def main():
     now = datetime.now(PH)
-    obs_time = now.replace(minute=(now.minute // 10) * 10, second=0, microsecond=0) 
+    obs_time = now.replace(minute=(now.minute // 10) * 10, second=0, microsecond=0)
     ymdhm = obs_time.strftime("%Y%m%d%H%M")
 
     r = requests.post(
