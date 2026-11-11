@@ -1,0 +1,41 @@
+name: Backfill archive
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "Start date (YYYY-MM-DD)"
+        required: true
+      end:
+        description: "End date (YYYY-MM-DD)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests pandas
+      - name: Run backfill
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+        run: python backfill.py "$START" "$END"
+      - name: Commit data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "Backfill $START to $END"
+          git pull --rebase
+          git push
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
