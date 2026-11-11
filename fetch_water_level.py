@@ -8,8 +8,7 @@ from pathlib import Path
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 URL = "https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/water/table_list.do"
-CSV_OUT = Path("data/water_level.csv")
-REPORT_OUT = Path("data/water_level_report.md")
+DATA_DIR = Path("data")
 PH = timezone(timedelta(hours=8))
 
 READINGS = [("wl", "wl"), ("wl_30m", "wl30m"), ("wl_1h", "wl1h"), ("wl_2h", "wl2h")]
@@ -62,21 +61,21 @@ def fetch(obs_time, now):
     return pd.DataFrame(rows)
 
 
-def save_csv(new_df):
+def save_csv(new_df, csv_path):
     """Add the new hour. If that hour is already saved, replace it with the newer fetch."""
-    CSV_OUT.parent.mkdir(exist_ok=True)
-    if CSV_OUT.exists():
-        old = pd.read_csv(CSV_OUT, dtype=str)
+    csv_path.parent.mkdir(exist_ok=True)
+    if csv_path.exists():
+        old = pd.read_csv(csv_path, dtype=str)
         old = old[old["observed_at"] != new_df["observed_at"].iloc[0]]
         df = pd.concat([old, new_df], ignore_index=True)
     else:
         df = new_df
-    df.to_csv(CSV_OUT, index=False)
+    df.to_csv(csv_path, index=False)
     return df
 
 
-def write_report(df):
-    lines = ["# PAGASA Water Level Report", "",
+def write_report(df, report_path, month_label):
+    lines = [f"# PAGASA Water Level Report - {month_label}", "",
              "Values are shown as on the PAGASA website. (*) is the mark PAGASA puts on a reading.", ""]
     for observed_at in sorted(df["observed_at"].unique(), reverse=True):  # newest first
         block = df[df["observed_at"] == observed_at]
@@ -92,16 +91,21 @@ def write_report(df):
             cells += [fmt(r["alert"]), fmt(r["alarm"]), fmt(r["critical"])]
             lines.append("| " + " | ".join(cells) + " |")
         lines.append("")
-    REPORT_OUT.write_text("\n".join(lines), encoding="utf-8")
+    report_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main():
     now = datetime.now(PH)
     obs_time = now.replace(minute=0, second=0, microsecond=0)
+
+    month = obs_time.strftime("%Y-%m")            # e.g. 2026-10
+    csv_path = DATA_DIR / f"{month}.csv"
+    report_path = DATA_DIR / f"{month}_report.md"
+
     new_df = fetch(obs_time, now)
-    df = save_csv(new_df)
-    write_report(df)
-    print(f"Saved {len(new_df)} stations for {obs_time:%Y-%m-%d %H:%M}")
+    df = save_csv(new_df, csv_path)
+    write_report(df, report_path, obs_time.strftime("%B %Y"))
+    print(f"Saved {len(new_df)} stations for {obs_time:%Y-%m-%d %H:%M} into {csv_path.name}")
 
 
 if __name__ == "__main__":
