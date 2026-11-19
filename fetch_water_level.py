@@ -2,6 +2,7 @@ import re
 import requests
 import pandas as pd
 import urllib3
+import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -85,7 +86,10 @@ def write_report(df, report_path, month_label):
         lines.append("| Station | Current | -30 min | -1 hr | -2 hr | Alert | Alarm | Critical |")
         lines.append("|---|---|---|---|---|---|---|---|")
         for _, r in block.iterrows():
-            cells = [str(r["station"])]
+            name = str(r["station"])
+                if str(r["agency_type"]) == "002":
+            name += " [MMDA]"
+            cells = [name]
             for col, _key in READINGS:
                 cells.append(fmt(r[col], r[col + "_flagged"]))
             cells += [fmt(r["alert"]), fmt(r["alarm"]), fmt(r["critical"])]
@@ -96,16 +100,29 @@ def write_report(df, report_path, month_label):
 
 def main():
     now = datetime.now(PH)
-    obs_time = now.replace(minute=0, second=0, microsecond=0)
+    this_hour = now.replace(minute=0, second=0, microsecond=0)
+    failed = False
 
-    month = obs_time.strftime("%Y-%m")            # e.g. 2026-10
-    csv_path = DATA_DIR / f"{month}.csv"
-    report_path = DATA_DIR / f"{month}_report.md"
+    # Also re-fetch the previous hour, whose reading should be final by now.
+    for obs_time in (this_hour - timedelta(hours=1), this_hour):
+        month = obs_time.strftime("%Y-%m")
+        csv_path = DATA_DIR / f"{month}.csv"
+        report_path = DATA_DIR / f"{month}_report.md"
+        try:
+            new_df = fetch(obs_time, now)
+        except Exception as e:
+            print(f"{obs_time:%Y-%m-%d %H:%M} failed: {e}")
+            failed = True
+            continue
+        if new_df.empty or new_df["wl"].isna().all():
+            print(f"{obs_time:%Y-%m-%d %H:%M} no data, keeping what is saved")
+            continue
+        df = save_csv(new_df, csv_path)
+        write_report(df, report_path, obs_time.strftime("%B %Y"))
+        print(f"Saved {len(new_df)} stations for {obs_time:%Y-%m-%d %H:%M} into {csv_path.name}")
 
-    new_df = fetch(obs_time, now)
-    df = save_csv(new_df, csv_path)
-    write_report(df, report_path, obs_time.strftime("%B %Y"))
-    print(f"Saved {len(new_df)} stations for {obs_time:%Y-%m-%d %H:%M} into {csv_path.name}")
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
