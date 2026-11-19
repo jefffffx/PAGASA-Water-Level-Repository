@@ -1,8 +1,8 @@
 import re
+import sys
 import requests
 import pandas as pd
 import urllib3
-import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -87,8 +87,8 @@ def write_report(df, report_path, month_label):
         lines.append("|---|---|---|---|---|---|---|---|")
         for _, r in block.iterrows():
             name = str(r["station"])
-                if str(r["agency_type"]) == "002":
-            name += " [MMDA]"
+            if str(r["agency_type"]) == "002":
+                name += " [MMDA]"
             cells = [name]
             for col, _key in READINGS:
                 cells.append(fmt(r[col], r[col + "_flagged"]))
