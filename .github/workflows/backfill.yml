@@ -9,9 +9,17 @@ on:
       end:
         description: "End date (YYYY-MM-DD)"
         required: true
+      overwrite:
+        description: "Re-fetch hours that are already saved?"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+
+concurrency:
+  group: water-level-data
+  cancel-in-progress: false
 
 jobs:
   backfill:
@@ -27,8 +35,18 @@ jobs:
         env:
           START: ${{ inputs.start }}
           END: ${{ inputs.end }}
-        run: python backfill.py "$START" "$END"
+          OVERWRITE: ${{ inputs.overwrite }}
+        run: |
+          if [ "$OVERWRITE" = "true" ]; then
+            python backfill.py "$START" "$END" overwrite
+          else
+            python backfill.py "$START" "$END"
+          fi
       - name: Commit data
+        if: always()
+        env:
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
@@ -36,6 +54,3 @@ jobs:
           git diff --staged --quiet || git commit -m "Backfill $START to $END"
           git pull --rebase
           git push
-        env:
-          START: ${{ inputs.start }}
-          END: ${{ inputs.end }}
