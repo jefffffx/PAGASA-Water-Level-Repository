@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: water-level-data
+  cancel-in-progress: false
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -24,4 +28,5 @@ jobs:
           git config user.email "actions@github.com"
           git add data/
           git diff --staged --quiet || git commit -m "Update water level data"
+          git pull --rebase
           git push
