@@ -1,4 +1,4 @@
-# PAGASA-Water-Level-Repository
+# PAGASA Water Level Repository
 
 An automatically updated archive of hourly water level readings from the PAGASA Pasig-Marikina-Tullahan Flood Forecasting and Warning System (FFWS), kept for QCDRRMO - EOC (Quezon City).
 
