@@ -13,12 +13,15 @@ The data belongs to PAGASA. This repository only stores a copy for monitoring an
 
 | Path | What it is |
 |---|---|
-| `data/YYYY-MM.csv` | Raw data for one month, one row per station per hour. Use this for analysis and charts. |
-| `data/YYYY-MM_report.md` | The same month as a readable report, with one table per hour (newest first) headed "PAGASA Water Level as of (date and time) (weekday)". |
+| `data/YEARLY_SIMPLE/YYYY.csv` | **The simple files** (folder `data/YEARLY_SIMPLE/`). One file per year with four columns (`datetime`, `station`, `agency`, `water level`), laid out like the PAGASA table. Use these in Excel or Google Sheets and for dashboards. |
+| `data/MONTHLY_DETAILED/YYYY-MM.csv` | Detailed raw data for one month: also has the station ID, the readings 30 minutes, 1 hour and 2 hours earlier, the warning levels and the fetch time. The yearly files are built from these. |
+| `data/MONTHLY_DETAILED/YYYY-MM_report.md` | The same month as a readable report, with one table per hour (newest first) headed "PAGASA Water Level as of (date and time) (weekday)". |
 | `fetch_water_level.py` | Fetches the latest readings and saves them. Run every hour by GitHub Actions. |
 | `backfill.py` | Fetches past hours for a date range. Run manually. |
+| `build_yearly.py` | Rebuilds the yearly files from the monthly files. Run manually when needed. |
 | `.github/workflows/fetch.yml` | Schedules the hourly update. |
 | `.github/workflows/backfill.yml` | Lets you run the backfill from the Actions tab. |
+| `.github/workflows/build-yearly.yml` | Lets you rebuild the yearly files from the Actions tab. |
 
 ## How the data is collected
 
