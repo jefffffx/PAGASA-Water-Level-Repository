@@ -1,1 +1,52 @@
+name: Reorganize data folder (one time)
 
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: water-level-data
+  cancel-in-progress: false
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move files into the new folders
+        run: |
+          mkdir -p data/MONTHLY_DETAILED
+          for src in data data/detailed; do
+            for f in $src/20??-??.csv $src/20??-??_report.md; do
+              [ -e "$f" ] || continue
+              name=$(basename "$f")
+              if [ -e "data/MONTHLY_DETAILED/$name" ]; then
+                echo "SKIPPED $name: already exists in data/MONTHLY_DETAILED"
+              else
+                git mv "$f" "data/MONTHLY_DETAILED/$name"
+                echo "moved $name"
+              fi
+            done
+          done
+          if [ -d data/yearly ]; then
+            mkdir -p data/YEARLY_SIMPLE
+            for f in data/yearly/*.csv; do
+              [ -e "$f" ] || continue
+              name=$(basename "$f")
+              if [ -e "data/YEARLY_SIMPLE/$name" ]; then
+                echo "SKIPPED $name: already exists in data/YEARLY_SIMPLE"
+              else
+                git mv "$f" "data/YEARLY_SIMPLE/$name"
+                echo "moved yearly $name"
+              fi
+            done
+          fi
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git diff --staged --quiet || git commit -m "Move files into MONTHLY_DETAILED and YEARLY_SIMPLE"
+          git pull --rebase
+          git push
