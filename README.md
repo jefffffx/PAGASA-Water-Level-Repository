@@ -63,9 +63,10 @@ Notes:
 - **Readings may be revised.** A reading can change in the minutes after it is first published. The hourly job re-fetches the previous hour to catch this, but values saved at other times can differ slightly from what the page shows later. When checking against the website, set its Search Time to the same hour as `observed_at`.
 - **Meaning of `(*)`.** The mark is copied as published. Its exact meaning has not been confirmed with PAGASA, so treat flagged values with care until it is.
 - **Scheduled runs are not exact.** GitHub can start scheduled runs several minutes late and sometimes skips them. `fetched_at` shows when a row was really saved, and hours that were missed can be filled with a backfill.
-- **Source outages.** The PAGASA site was unreachable from the evening of November 10, 2026 until around November 19, 2026. Hours in that period were recovered by a backfill where the server still held them.
+- **Source outages.** The PAGASA site was unreachable from the evening of November 10, 2026 until the night of November 13 to early November 14, 2026. The hours from that period were re-fetched with a backfill and are complete.
 - **Certificate verification is turned off.** The server does not send its full certificate chain, so Python refuses the connection unless `verify=False` is used. The data is public and read-only, but this means the script cannot prove it is talking to the real PAGASA server.
-- **Station readings can be unreliable.** Some stations show constant or zero values for long periods and are flagged. Filter on the `*_flagged` columns when analyzing.
+- **Some stations show constant or zero values** for long periods and are marked with `(*)`. This may mean the sensor is offline or the data is stale, but it has not been confirmed with PAGASA. Check these readings before using them.
+- **The station list can change.** The archive and the live data both show 20 stations per hour, matching the PAGASA table. If PAGASA adds or removes a station, it will appear only in the months it existed.
 
 ## If the data stops updating
 
