@@ -45,6 +45,20 @@ The PAGASA page loads its table from a request to `/water/table_list.do`. The sc
 
 In the reports, values are shown the way the PAGASA page shows them (two decimals, `(*)` where flagged, `-` where empty).
 
+## Using the data
+
+- **In Excel:** open a monthly CSV directly. Sort or filter by `observed_at` and `station`.
+- **In Python:**
+
+  ```python
+  import pandas as pd
+  df = pd.read_csv("data/2026-10.csv")
+  angono = df[df["station"] == "Angono"]
+  ```
+
+- **Across several months:** read each `data/YYYY-MM.csv` and join them with `pd.concat`.
+- **Checking a value:** set the PAGASA page's Search Time to the same hour as `observed_at`. Do not compare against the page's current time.
+
 ## Running a backfill
 
 1. Go to the **Actions** tab, choose **Backfill archive**, and click **Run workflow**.
@@ -74,6 +88,16 @@ Notes:
 2. If they fail with a timeout, the PAGASA site is probably down. It will recover by itself, and the missed hours can be filled with a backfill afterwards.
 3. If they fail with a `KeyError`, a JSON error or an empty result, PAGASA may have changed the page. Check the request in your browser (F12 > Network > `table_list.do`) and update `fetch_water_level.py`.
 4. GitHub emails the repository owner when a scheduled run fails.
+
+## Editing the scripts safely
+
+A mistake on `main` breaks the hourly job, so:
+
+1. Create a branch (for example `test`) and make the change there.
+2. Run the workflow from that branch (choose it under **Use workflow from**), then merge into `main` once it works.
+3. When changing a Python file, paste the whole file instead of a single line. Python is strict about indentation, and a one-line edit once broke the hourly job.
+4. Avoid committing around minute 20 of the hour, since a scheduled run may start at that time.
+5. After any change, open the run's log and look for `Saved ... stations` lines. A green check alone does not prove data was saved.
 
 ## Requirements (if running locally)
 
