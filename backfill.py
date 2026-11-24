@@ -3,14 +3,14 @@ import time
 import pandas as pd
 from datetime import datetime, timedelta
 
-from fetch_water_level import DATA_DIR, PH, fetch, write_report
+from fetch_water_level import DETAILED_DIR, PH, fetch, write_report, build_yearly
 
 MAX_FAILURES_IN_A_ROW = 5
 
 
 def already_saved(month):
     """Hours already stored for this month."""
-    path = DATA_DIR / f"{month}.csv"
+    path = DETAILED_DIR / f"{month}.csv"
     if path.exists():
         return set(pd.read_csv(path, dtype=str)["observed_at"])
     return set()
@@ -35,8 +35,8 @@ def flush(month, frames):
     """Write one month's new hours into its CSV and report."""
     if month is None or not frames:
         return
-    DATA_DIR.mkdir(exist_ok=True)
-    csv_path = DATA_DIR / f"{month}.csv"
+    DETAILED_DIR.mkdir(parents=True, exist_ok=True)
+    csv_path = DETAILED_DIR / f"{month}.csv"
     new_df = pd.concat(frames, ignore_index=True)
     if csv_path.exists():
         old = pd.read_csv(csv_path, dtype=str)
@@ -47,8 +47,19 @@ def flush(month, frames):
     df = df.sort_values(["observed_at", "station"]).reset_index(drop=True)
     df.to_csv(csv_path, index=False)
     label = datetime.strptime(month, "%Y-%m").strftime("%B %Y")
-    write_report(df, DATA_DIR / f"{month}_report.md", label)
+    write_report(df, DETAILED_DIR / f"{month}_report.md", label)
     print(f"Saved {month}: {len(new_df)} rows written")
+
+
+def rebuild_years(first, last):
+    """Rebuild the yearly files for every year from first to last."""
+    for year in range(first.year, last.year + 1):
+        try:
+            rows = build_yearly(year)
+            if rows:
+                print(f"Updated YEARLY_SIMPLE/{year}.csv ({rows} rows)")
+        except Exception as e:
+            print(f"WARNING: could not update YEARLY_SIMPLE/{year}.csv: {e}")
 
 
 def main():
@@ -76,6 +87,7 @@ def main():
                 failures += 1
                 if failures >= MAX_FAILURES_IN_A_ROW:
                     flush(current_month, frames)
+                    rebuild_years(start, t)
                     sys.exit(f"Stopping at {t:%Y-%m-%d %H:%M}: "
                              f"{failures} hours in a row could not be fetched")
             else:
@@ -85,6 +97,7 @@ def main():
             time.sleep(0.5)  # be gentle with PAGASA's server
         t += timedelta(hours=1)
     flush(current_month, frames)
+    rebuild_years(start, end)
 
 
 if __name__ == "__main__":
