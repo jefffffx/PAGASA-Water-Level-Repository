@@ -10,9 +10,18 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 URL = "https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/water/table_list.do"
 DATA_DIR = Path("data")
+DETAILED_DIR = DATA_DIR / "MONTHLY_DETAILED"   # monthly csv + report files
+YEARLY_DIR = DATA_DIR / "YEARLY_SIMPLE"        # simple yearly csv files
 PH = timezone(timedelta(hours=8))
 
 READINGS = [("wl", "wl"), ("wl_30m", "wl30m"), ("wl_1h", "wl1h"), ("wl_2h", "wl2h")]
+
+# Agency codes in the PAGASA table, named as the website labels them
+AGENCIES = {"001": "PAGASA", "002": "MMDA"}
+
+# True:  water level is written as on the website, e.g. 12.10(*)
+# False: water level is written as a plain number, e.g. 12.10
+SHOW_STAR = True
 
 
 def parse(v):
@@ -64,7 +73,7 @@ def fetch(obs_time, now):
 
 def save_csv(new_df, csv_path):
     """Add the new hour. If that hour is already saved, replace it with the newer fetch."""
-    csv_path.parent.mkdir(exist_ok=True)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
     if csv_path.exists():
         old = pd.read_csv(csv_path, dtype=str)
         old = old[old["observed_at"] != new_df["observed_at"].iloc[0]]
@@ -98,16 +107,56 @@ def write_report(df, report_path, month_label):
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def agency_name(code):
+    code = str(code).strip()
+    return AGENCIES.get(code, code)
+
+
+def level_text(v, flagged):
+    """Water level as text with 2 decimals, plus (*) when the website shows it."""
+    if v is None or pd.isna(v) or v == "":
+        return ""
+    text = f"{float(v):.2f}"
+    if SHOW_STAR and str(flagged) == "True":
+        text += "(*)"
+    return text
+
+
+def simple_rows(raw):
+    """Turn a detailed monthly table into: datetime, station, agency, water level."""
+    return pd.DataFrame({
+        "datetime": raw["observed_at"],
+        "station": raw["station"],
+        "agency": raw["agency_type"].map(agency_name),
+        "water level": [level_text(v, f) for v, f in zip(raw["wl"], raw["wl_flagged"])],
+    })
+
+
+def build_yearly(year):
+    """Rebuild data/YEARLY_SIMPLE/<year>.csv from the monthly files. Returns the number of rows."""
+    files = sorted(DETAILED_DIR.glob(f"{year}-??.csv"))
+    if not files:
+        return 0
+    frames = [simple_rows(pd.read_csv(f, dtype=str)) for f in files]
+    out = pd.concat(frames, ignore_index=True)
+    out = out.drop_duplicates(subset=["datetime", "station"], keep="last")
+    out = out.sort_values(["datetime", "station"]).reset_index(drop=True)
+    YEARLY_DIR.mkdir(parents=True, exist_ok=True)
+    out.to_csv(YEARLY_DIR / f"{year}.csv", index=False)
+    return len(out)
+
+
 def main():
     now = datetime.now(PH)
     this_hour = now.replace(minute=0, second=0, microsecond=0)
     failed = False
+    years = set()
 
     # Also re-fetch the previous hour, whose reading should be final by now.
     for obs_time in (this_hour - timedelta(hours=1), this_hour):
         month = obs_time.strftime("%Y-%m")
-        csv_path = DATA_DIR / f"{month}.csv"
-        report_path = DATA_DIR / f"{month}_report.md"
+        csv_path = DETAILED_DIR / f"{month}.csv"
+        report_path = DETAILED_DIR / f"{month}_report.md"
         try:
             new_df = fetch(obs_time, now)
         except Exception as e:
@@ -119,7 +168,17 @@ def main():
             continue
         df = save_csv(new_df, csv_path)
         write_report(df, report_path, obs_time.strftime("%B %Y"))
+        years.add(obs_time.year)
         print(f"Saved {len(new_df)} stations for {obs_time:%Y-%m-%d %H:%M} into {csv_path.name}")
+
+    # The monthly files are the source of truth, so a problem here must not
+    # stop the hour from being saved. The yearly files can be rebuilt any time.
+    for year in sorted(years):
+        try:
+            rows = build_yearly(year)
+            print(f"Updated YEARLY_SIMPLE/{year}.csv ({rows} rows)")
+        except Exception as e:
+            print(f"WARNING: could not update YEARLY_SIMPLE/{year}.csv: {e}")
 
     if failed:
         sys.exit(1)
