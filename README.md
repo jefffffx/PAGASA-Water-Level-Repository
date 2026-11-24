@@ -26,11 +26,12 @@ The data belongs to PAGASA. This repository only stores a copy for monitoring an
 ## How the data is collected
 
 The PAGASA page loads its table from a request to `/water/table_list.do`. The script sends the same request with a single form field, `ymdhm`, the time to look up in the format `YYYYMMDDHHMM`, and receives the stations as JSON.
-
+ 
 1. **Hourly update.** `fetch.yml` runs at minute 20 of every hour. Each run saves the current hour and also refreshes the previous hour, because the most recent reading can still be revised for several minutes after it is published.
 2. **Saving.** New rows are added to the month's CSV. If an hour is already saved, it is replaced by the newer fetch, so there are no duplicate hours. The month's report is then rebuilt from the CSV.
 3. **Monthly files.** The month comes from the reading's date, so a new pair of files starts on the 1st of each month and earlier months are left untouched.
-4. **Commit.** The workflow commits the changed files to `main` ("Update water level data").
+4. **Yearly files.** After saving, the script rebuilds the year's file in `data/YEARLY_SIMPLE/` from that year's monthly files. If this step fails, the run still saves the monthly data and prints a warning. The yearly files can be rebuilt at any time.
+5. **Commit.** The workflow commits the changed files to `main` ("Update water level data").
 
 ## CSV columns
 
