@@ -123,9 +123,10 @@ def level_text(v, flagged):
 
 
 def simple_rows(raw):
-    """Turn a detailed monthly table into: datetime, station, agency, water level."""
+    """Turn a detailed monthly table into: date, time, station, agency, water level."""
     return pd.DataFrame({
-        "datetime": raw["observed_at"],
+        "date": raw["observed_at"].str[:10],
+        "time": raw["observed_at"].str[11:16],
         "station": raw["station"],
         "agency": raw["agency_type"].map(agency_name),
         "water level": [level_text(v, f) for v, f in zip(raw["wl"], raw["wl_flagged"])],
@@ -139,8 +140,8 @@ def build_yearly(year):
         return 0
     frames = [simple_rows(pd.read_csv(f, dtype=str)) for f in files]
     out = pd.concat(frames, ignore_index=True)
-    out = out.drop_duplicates(subset=["datetime", "station"], keep="last")
-    out = out.sort_values(["datetime", "station"]).reset_index(drop=True)
+    out = out.drop_duplicates(subset=["date", "time", "station"], keep="last")
+    out = out.sort_values(["date", "time", "station"]).reset_index(drop=True)
     YEARLY_DIR.mkdir(parents=True, exist_ok=True)
     out.to_csv(YEARLY_DIR / f"{year}.csv", index=False)
     return len(out)
