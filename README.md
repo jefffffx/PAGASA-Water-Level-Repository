@@ -27,12 +27,12 @@ data/
 
 For Excel, Google Sheets and dashboards. One row per station per hour, oldest first:
 
-| datetime | station | agency | water level |
-|---|---|---|---|
-| 2026-11-19 08:00 | Angono | MMDA | 11.36(*) |
-| 2026-11-19 08:00 | Burgos | PAGASA | 27.21 |
+| date | time | station | agency | water level |
+|---|---|---|---|---|
+| 2026-11-19 | 08:00 | Angono | MMDA | 11.36(*) |
+| 2026-11-19 | 08:00 | Burgos | PAGASA | 27.21 |
 
-- `datetime`: the hour the reading is for (Philippine time)
+- `date`, `time`: the hour the reading is for (Philippine time, 24-hour clock)
 - `agency`: `PAGASA` or `MMDA`, as the PAGASA page lists the station
 - `water level`: in meters (EL.m), written as the PAGASA page shows it
 
@@ -72,7 +72,7 @@ angono = df[df["station"] == "Angono"]
 
 - **Backfill:** **Actions > Backfill archive > Run workflow**. Enter a start and end date (`YYYY-MM-DD`). Leave **overwrite** unticked to fetch only missing hours, or tick it to replace saved hours. It handles about 1,000 to 1,500 hours per 30 minutes, so use ranges of 12 months or less (GitHub stops jobs after 6 hours). If a run stops early, run it again with the same dates; saved hours are skipped. It stops by itself after 5 failed hours in a row.
 - **Rebuild the yearly files:** **Actions > Build yearly files > Run workflow**. No contact with PAGASA is needed.
-- **Check a value:** set the PAGASA page's Search Time to the same hour as `datetime`, not the page's current time.
+- **Check a value:** set the PAGASA page's Search Time to the same date and time as the row, not the page's current time.
 
 ## Known limitations
 
